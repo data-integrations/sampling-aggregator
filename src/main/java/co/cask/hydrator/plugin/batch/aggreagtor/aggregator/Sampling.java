@@ -17,6 +17,7 @@
 package co.cask.hydrator.plugin.batch.aggreagtor.aggregator;
 
 import co.cask.cdap.api.annotation.Description;
+import co.cask.cdap.api.annotation.Macro;
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
 import co.cask.cdap.api.data.format.StructuredRecord;
@@ -41,7 +42,7 @@ import javax.annotation.Nullable;
  */
 @Plugin(type = BatchAggregator.PLUGIN_TYPE)
 @Name("Sampling")
-@Description("Sampling a large dataset flowing through this plugin to pull random records.")
+@Description("Sample a large dataset allowing only a subset of records through to the next stage.")
 public class Sampling extends BatchAggregator<String, StructuredRecord, StructuredRecord> {
     private enum TYPE {
         SYSTEMATIC, RESERVOIR
@@ -51,11 +52,6 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
 
     public Sampling(SamplingConfig config) {
         this.config = config;
-    }
-
-    @Override
-    public void prepareRun(BatchAggregatorContext context) throws Exception {
-        context.setNumPartitions(1);
     }
 
     @Override
@@ -187,26 +183,32 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
 
         @Nullable
         @Description("The number of records that needs to be sampled from the input records.")
+        @Macro
         private Integer sampleSize;
 
         @Nullable
         @Description("The percenatage of records that needs to be sampled from the input records.")
+        @Macro
         private Float samplePercentage;
 
-        @Description("Type of the Sampling algorithm that needs to be used to sample the data.")
+        @Description("Type of the Sampling algorithm that should to be used to sample the data. This can be either " +
+                "Systematic or Reservoir.")
         private String samplingType;
 
         @Nullable
-        @Description("The percenatage of additional records that needs to be included in addition to the input " +
-                "sample size to account for oversampling to be used in Systematic Sampling.")
+        @Description("The percentage of additional records that should be included in addition to the input " +
+                "sample size to account for oversampling. Required for Systematic Sampling.")
+        @Macro
         private Float overSamplingPercentage;
 
         @Nullable
         @Description("Random float value between 0 and 1 to be used in Systematic Sampling.")
+        @Macro
         private Float random;
 
         @Nullable
-        @Description("Total number od input records.")
+        @Description("Total number of input records for Systematic Sampling.")
+        @Macro
         private Integer totalRecords;
 
         public SamplingConfig() {
@@ -232,6 +234,16 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
             if (samplingType.equalsIgnoreCase(TYPE.SYSTEMATIC.toString()) && totalRecords == null) {
                 throw new IllegalArgumentException("Please provide value for 'Total Records' when selecting sampling " +
                         "type as 'Systematic'.");
+            }
+
+            if(samplePercentage != null && (samplePercentage < 1 || samplePercentage > 100)) {
+                throw new IllegalArgumentException("Value entered for 'Random' is invalid. It should be in the range " +
+                        "0 to 1.");
+            }
+
+            if(random < 0 || random > 1) {
+                throw new IllegalArgumentException("Value entered for 'Random' is invalid. It should be in the range " +
+                        "0 to 1.");
             }
         }
     }

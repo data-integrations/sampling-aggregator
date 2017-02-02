@@ -7,28 +7,23 @@ Sampling a large dataset flowing through this plugin to pull random records. Sup
 i.e, Systematic Sampling and Reservoir Sampling.
 
 
-Use Case
---------
-The plugin is used when you want to randomly sample a large dataset based on different sampling types.
-
-
 Properties
 ----------
 **sampleSize:** The number of records that needs to be sampled from the input records.
 
 **samplePercentage:** The percentage of records that needs to be sampled from the input records. Either of
-'samplePercentage' or 'sampleSize' needs to be mentioned.
+'samplePercentage' or 'sampleSize' should be specified for this plugin.
 
-**samplingType:** Type of the Sampling algorithm that needs to be used to sample the data.
-For example: Systematic or Reservoir
+**samplingType:** Type of the Sampling algorithm that should to be used to sample the data. This can be either
+Systematic or Reservoir.
 
-**overSamplingPercentage:** The percentage of additional records that needs to be included in addition to the input
-sample size to account for oversampling to be used in Systematic Sampling.
+**overSamplingPercentage:** The percentage of additional records that should be included in addition to the input
+sample size to account for oversampling. Required for Systematic Sampling.
 
 **random:** Random float value between 0 and 1 to be used in Systematic Sampling. If not provided, plugin will
 internally generate random value.
 
-**totalRecords:** Total number of input records to be used in Systematic Sampling.
+**totalRecords:** Total number of input records for Systematic Sampling.
 
 
 Example

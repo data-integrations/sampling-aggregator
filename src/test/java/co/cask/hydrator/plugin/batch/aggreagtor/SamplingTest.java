@@ -253,4 +253,18 @@ public class SamplingTest extends HydratorTestBase {
                 "Systematic", null);
         config.validate();
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIllegalRandom() {
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, Float.valueOf(10), Float.valueOf(10),
+                "Systematic", 10);
+        config.validate();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIllegalSamplePercentage() {
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, Float.valueOf(110), Float.valueOf(10), null,
+                "Systematic", 10);
+        config.validate();
+    }
 }
