@@ -237,8 +237,8 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
             }
 
             if(samplePercentage != null && (samplePercentage < 1 || samplePercentage > 100)) {
-                throw new IllegalArgumentException("Value entered for 'Random' is invalid. It should be in the range " +
-                        "0 to 1.");
+                throw new IllegalArgumentException("Value entered for 'Sample Percentage' is invalid. It should be " +
+                        "in the range 1 to 100.");
             }
 
             if(random < 0 || random > 1) {
