@@ -9,7 +9,8 @@ i.e, Systematic Sampling and Reservoir Sampling.
 
 Properties
 ----------
-**sampleSize:** The number of records that needs to be sampled from the input records.
+**sampleSize:** The number of records that needs to be sampled from the input records. Either of 'samplePercentage'
+or 'sampleSize' should be specified for this plugin.
 
 **samplePercentage:** The percentage of records that needs to be sampled from the input records. Either of
 'samplePercentage' or 'sampleSize' should be specified for this plugin.

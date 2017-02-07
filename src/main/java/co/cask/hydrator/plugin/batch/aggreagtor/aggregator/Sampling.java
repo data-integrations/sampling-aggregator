@@ -182,12 +182,14 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
     public static class SamplingConfig extends PluginConfig {
 
         @Nullable
-        @Description("The number of records that needs to be sampled from the input records.")
+        @Description("The number of records that needs to be sampled from the input records. Either of " +
+                "'samplePercentage' or 'sampleSize' should be specified for this plugin.")
         @Macro
         private Integer sampleSize;
 
         @Nullable
-        @Description("The percenatage of records that needs to be sampled from the input records.")
+        @Description("The percenatage of records that needs to be sampled from the input records. Either of " +
+                "'samplePercentage' or 'sampleSize' should be specified for this plugin.")
         @Macro
         private Float samplePercentage;
 
@@ -202,7 +204,8 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
         private Float overSamplingPercentage;
 
         @Nullable
-        @Description("Random float value between 0 and 1 to be used in Systematic Sampling.")
+        @Description("Random float value between 0 and 1 to be used in Systematic Sampling. If not provided, " +
+                "plugin will internally generate random value.")
         @Macro
         private Float random;
 
@@ -236,12 +239,12 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
                         "type as 'Systematic'.");
             }
 
-            if(samplePercentage != null && (samplePercentage < 1 || samplePercentage > 100)) {
+            if (samplePercentage != null && (samplePercentage < 1 || samplePercentage > 100)) {
                 throw new IllegalArgumentException("Value entered for 'Sample Percentage' is invalid. It should be " +
                         "in the range 1 to 100.");
             }
 
-            if(random < 0 || random > 1) {
+            if (random < 0 || random > 1) {
                 throw new IllegalArgumentException("Value entered for 'Random' is invalid. It should be in the range " +
                         "0 to 1.");
             }
