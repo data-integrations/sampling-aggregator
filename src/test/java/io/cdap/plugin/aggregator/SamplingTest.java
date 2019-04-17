@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2017-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,39 +14,38 @@
  * the License.
  */
 
-package co.cask.hydrator.plugin.batch.aggreagtor;
+package io.cdap.plugin.aggregator;
 
-import co.cask.cdap.api.artifact.ArtifactVersion;
-import co.cask.cdap.api.data.format.StructuredRecord;
-import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.dataset.table.Table;
-import co.cask.cdap.datapipeline.DataPipelineApp;
-import co.cask.cdap.datapipeline.SmartWorkflow;
-import co.cask.cdap.etl.api.batch.BatchAggregator;
-import co.cask.cdap.etl.mock.batch.MockSink;
-import co.cask.cdap.etl.mock.batch.MockSource;
-import co.cask.cdap.etl.mock.test.HydratorTestBase;
-import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
-import co.cask.cdap.etl.proto.v2.ETLPlugin;
-import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.proto.artifact.ArtifactRange;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
-import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.DataSetManager;
-import co.cask.cdap.test.TestConfiguration;
-import co.cask.cdap.test.WorkflowManager;
-import co.cask.hydrator.plugin.batch.aggreagtor.aggregator.Sampling;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.cdap.cdap.api.artifact.ArtifactRange;
+import io.cdap.cdap.api.artifact.ArtifactSummary;
+import io.cdap.cdap.api.artifact.ArtifactVersion;
+import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.dataset.table.Table;
+import io.cdap.cdap.datapipeline.DataPipelineApp;
+import io.cdap.cdap.datapipeline.SmartWorkflow;
+import io.cdap.cdap.etl.api.batch.BatchAggregator;
+import io.cdap.cdap.etl.mock.batch.MockSink;
+import io.cdap.cdap.etl.mock.batch.MockSource;
+import io.cdap.cdap.etl.mock.test.HydratorTestBase;
+import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
+import io.cdap.cdap.etl.proto.v2.ETLPlugin;
+import io.cdap.cdap.etl.proto.v2.ETLStage;
+import io.cdap.cdap.proto.ProgramRunStatus;
+import io.cdap.cdap.proto.artifact.AppRequest;
+import io.cdap.cdap.proto.id.ApplicationId;
+import io.cdap.cdap.proto.id.ArtifactId;
+import io.cdap.cdap.proto.id.NamespaceId;
+import io.cdap.cdap.test.ApplicationManager;
+import io.cdap.cdap.test.DataSetManager;
+import io.cdap.cdap.test.TestConfiguration;
+import io.cdap.cdap.test.WorkflowManager;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-
 
 import java.util.HashSet;
 import java.util.List;
@@ -61,10 +60,11 @@ public class SamplingTest extends HydratorTestBase {
     @ClassRule
     public static final TestConfiguration CONFIG = new TestConfiguration("explore.enabled", false);
 
-    protected static final ArtifactId BATCH_ARTIFACT_ID = NamespaceId.DEFAULT.artifact("data-pipeline", "4.0.0");
-    protected static final ArtifactSummary BATCH_ARTIFACT = new ArtifactSummary("data-pipeline", "4.0.0");
+    private static final String PIPELINE_VERSION = "6.0.0-SNAPSHOT";
+    private static final ArtifactId BATCH_ARTIFACT_ID = NamespaceId.DEFAULT.artifact("data-pipeline", PIPELINE_VERSION);
+    private static final ArtifactSummary BATCH_ARTIFACT = new ArtifactSummary("data-pipeline", PIPELINE_VERSION);
 
-    protected static final Schema SOURCE_SCHEMA =
+    private static final Schema SOURCE_SCHEMA =
             Schema.recordOf("sourceRecord",
                     Schema.Field.of(SamplingTest.ID, Schema.of(Schema.Type.STRING)),
                     Schema.Field.of(SamplingTest.NAME, Schema.of(Schema.Type.STRING)),
@@ -81,7 +81,7 @@ public class SamplingTest extends HydratorTestBase {
 
         setupBatchArtifacts(BATCH_ARTIFACT_ID, DataPipelineApp.class);
         Set<ArtifactRange> parents = new HashSet<>();
-        parents.add(new ArtifactRange(NamespaceId.DEFAULT, BATCH_ARTIFACT_ID.getArtifact(),
+        parents.add(new ArtifactRange(NamespaceId.DEFAULT.getNamespace(), BATCH_ARTIFACT_ID.getArtifact(),
                 new ArtifactVersion(BATCH_ARTIFACT.getVersion()), true,
                 new ArtifactVersion(BATCH_ARTIFACT.getVersion()), true));
         addPluginArtifact(NamespaceId.DEFAULT.artifact("sampling-aggregator-plugin", "1.6.0"), parents,
@@ -106,7 +106,7 @@ public class SamplingTest extends HydratorTestBase {
         String sinkTable = "output_table";
         ETLStage sink = new ETLStage("sink", MockSink.getPlugin(sinkTable));
 
-        ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+        ETLBatchConfig etlConfig = ETLBatchConfig.builder()
                 .addStage(source)
                 .addStage(transform)
                 .addStage(sink)
@@ -132,7 +132,7 @@ public class SamplingTest extends HydratorTestBase {
 
         WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
         workflowManager.start();
-        workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+        workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
         DataSetManager<Table> outputManager = getDataset(sinkTable);
         List<StructuredRecord> outputRecords = MockSink.readOutput(outputManager);
@@ -157,7 +157,7 @@ public class SamplingTest extends HydratorTestBase {
         String sinkTable = "output_table_with_oversampling";
         ETLStage sink = new ETLStage("sink", MockSink.getPlugin(sinkTable));
 
-        ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+        ETLBatchConfig etlConfig = ETLBatchConfig.builder()
                 .addStage(source)
                 .addStage(transform)
                 .addStage(sink)
@@ -183,7 +183,7 @@ public class SamplingTest extends HydratorTestBase {
 
         WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
         workflowManager.start();
-        workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+        workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
         DataSetManager<Table> outputManager = getDataset(sinkTable);
         List<StructuredRecord> outputRecords = MockSink.readOutput(outputManager);
@@ -206,7 +206,7 @@ public class SamplingTest extends HydratorTestBase {
         String sinkTable = "output_table_reservoir";
         ETLStage sink = new ETLStage("sink", MockSink.getPlugin(sinkTable));
 
-        ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+        ETLBatchConfig etlConfig = ETLBatchConfig.builder()
                 .addStage(source)
                 .addStage(transform)
                 .addStage(sink)
@@ -232,7 +232,7 @@ public class SamplingTest extends HydratorTestBase {
 
         WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
         workflowManager.start();
-        workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+        workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
         DataSetManager<Table> outputManager = getDataset(sinkTable);
         List<StructuredRecord> outputRecords = MockSink.readOutput(outputManager);
@@ -242,29 +242,25 @@ public class SamplingTest extends HydratorTestBase {
 
     @Test(expected = IllegalArgumentException.class)
     public void testSamplingWithoutSampleSizeOrPercentage() {
-        Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, null, Float.valueOf(10), null,
-                "Systematic", 10);
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, null, 10f, null, "Systematic", 10);
         config.validate();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testSystematicSamplingWithoutTotalRecords() {
-        Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, Float.valueOf(10), null,
-                "Systematic", null);
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, 10f, null, "Systematic", null);
         config.validate();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIllegalRandom() {
-        Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, Float.valueOf(10), Float.valueOf(10),
-                "Systematic", 10);
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, 10f, 10f, "Systematic", 10);
         config.validate();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIllegalSamplePercentage() {
-        Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, Float.valueOf(110), Float.valueOf(10), null,
-                "Systematic", 10);
+        Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, 110f, 10f, null, "Systematic", 10);
         config.validate();
     }
 }

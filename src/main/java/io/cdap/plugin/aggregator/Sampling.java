@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2017-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,19 +14,18 @@
  * the License.
  */
 
-package co.cask.hydrator.plugin.batch.aggreagtor.aggregator;
+package io.cdap.plugin.aggregator;
 
-import co.cask.cdap.api.annotation.Description;
-import co.cask.cdap.api.annotation.Macro;
-import co.cask.cdap.api.annotation.Name;
-import co.cask.cdap.api.annotation.Plugin;
-import co.cask.cdap.api.data.format.StructuredRecord;
-import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.plugin.PluginConfig;
-import co.cask.cdap.etl.api.Emitter;
-import co.cask.cdap.etl.api.PipelineConfigurer;
-import co.cask.cdap.etl.api.batch.BatchAggregator;
-import co.cask.cdap.etl.api.batch.BatchAggregatorContext;
+import io.cdap.cdap.api.annotation.Description;
+import io.cdap.cdap.api.annotation.Macro;
+import io.cdap.cdap.api.annotation.Name;
+import io.cdap.cdap.api.annotation.Plugin;
+import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.plugin.PluginConfig;
+import io.cdap.cdap.etl.api.Emitter;
+import io.cdap.cdap.etl.api.PipelineConfigurer;
+import io.cdap.cdap.etl.api.batch.BatchAggregator;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections.buffer.PriorityBuffer;
 
@@ -62,13 +61,13 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
     }
 
     @Override
-    public void groupBy(StructuredRecord record, Emitter<String> emitter) throws Exception {
+    public void groupBy(StructuredRecord record, Emitter<String> emitter) {
         emitter.emit("sample");
     }
 
     @Override
     public void aggregate(String groupKey, Iterator<StructuredRecord> iterator,
-                          Emitter<StructuredRecord> emitter) throws Exception {
+                          Emitter<StructuredRecord> emitter) {
         int finalSampleSize = 0;
         if (config.sampleSize != null) {
             finalSampleSize = config.sampleSize;
@@ -85,7 +84,7 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
                 }
 
                 int sampleIndex = Math.round(config.totalRecords / finalSampleSize);
-                Float random = new Float(0);
+                Float random;
                 if (config.random != null) {
                     random = config.random;
                 } else {
@@ -108,13 +107,7 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
                 PriorityBuffer sampleData = new PriorityBuffer(true, new Comparator<StructuredRecord>() {
                     @Override
                     public int compare(StructuredRecord o1, StructuredRecord o2) {
-                        if ((float) o1.get("random") < (float) o2.get("random")) {
-                            return 1;
-                        } else if ((float) o1.get("random") > (float) o2.get("random")) {
-                            return -1;
-                        } else {
-                            return 0;
-                        }
+                        return Float.compare((float) o2.get("random"), (float) o1.get("random"));
                     }
                 });
 
@@ -170,9 +163,7 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
     private Schema createSchemaWithRandomField(Schema inputSchema) {
         List<Schema.Field> fields = new ArrayList<>();
         fields.add(Schema.Field.of("random", Schema.of(Schema.Type.FLOAT)));
-        for (Schema.Field field : inputSchema.getFields()) {
-            fields.add(field);
-        }
+        fields.addAll(inputSchema.getFields());
         return Schema.recordOf("schema", fields);
     }
 
@@ -229,7 +220,7 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
             this.totalRecords = totalRecords;
         }
 
-        public void validate() {
+        void validate() {
             if (sampleSize == null && samplePercentage == null) {
                 throw new IllegalArgumentException("Please provide Sample size or Sample Percentage values.");
             }
