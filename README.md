@@ -61,7 +61,7 @@ CDAP IRC Channel: #cdap on irc.freenode.net
 License and Trademarks
 ======================
 
-Copyright © 2017 Cask Data, Inc.
+Copyright © 2017-2019 Cask Data, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
 in compliance with the License. You may obtain a copy of the License at
@@ -78,4 +78,3 @@ Cask is a trademark of Cask Data, Inc. All rights reserved.
 Apache, Apache HBase, and HBase are trademarks of The Apache Software Foundation. Used with
 permission. No endorsement by The Apache Software Foundation is implied by the use of these marks.
 
-.. |(Hydrator)| image:: http://cask.co/wp-content/uploads/hydrator_logo_cdap1.png
