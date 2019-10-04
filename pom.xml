@@ -64,12 +64,12 @@
     <url>https://issues.cask.co/browse</url>
   </issueManagement>
   <properties>
-    <cdap.version>6.0.0-SNAPSHOT</cdap.version>
-    <cdap.plugin.version>2.2.0-SNAPSHOT</cdap.plugin.version>
+    <cdap.version>6.1.0-SNAPSHOT</cdap.version>
+    <cdap.plugin.version>2.3.0-SNAPSHOT</cdap.plugin.version>
     <hadoop.version>2.3.0</hadoop.version>
     <guava.version>13.0.1</guava.version>
-    <data.stream.parent>system:cdap-data-streams[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)</data.stream.parent>
-    <data.pipeline.parent>system:cdap-data-pipeline[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)</data.pipeline.parent>
+    <data.stream.parent>system:cdap-data-streams[6.1.0-SNAPSHOT,7.0.0-SNAPSHOT)</data.stream.parent>
+    <data.pipeline.parent>system:cdap-data-pipeline[6.1.0-SNAPSHOT,7.0.0-SNAPSHOT)</data.pipeline.parent>
   </properties>
 
   <repositories>
@@ -145,8 +145,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
         <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
       <plugin>

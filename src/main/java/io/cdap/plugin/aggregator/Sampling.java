@@ -17,15 +17,16 @@
 package io.cdap.plugin.aggregator;
 
 import io.cdap.cdap.api.annotation.Description;
-import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.api.plugin.PluginConfig;
 import io.cdap.cdap.etl.api.Emitter;
+import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.cdap.etl.api.PipelineConfigurer;
+import io.cdap.cdap.etl.api.StageConfigurer;
 import io.cdap.cdap.etl.api.batch.BatchAggregator;
+import io.cdap.cdap.etl.api.batch.BatchAggregatorContext;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections.buffer.PriorityBuffer;
 
@@ -34,7 +35,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import javax.annotation.Nullable;
 
 /**
  * Sampling plugin to sample random data from large dataset flowing through the plugin.
@@ -43,10 +43,6 @@ import javax.annotation.Nullable;
 @Name("Sampling")
 @Description("Sample a large dataset allowing only a subset of records through to the next stage.")
 public class Sampling extends BatchAggregator<String, StructuredRecord, StructuredRecord> {
-  private enum TYPE {
-    SYSTEMATIC, RESERVOIR
-  }
-
   private SamplingConfig config;
 
   public Sampling(SamplingConfig config) {
@@ -55,9 +51,20 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
 
   @Override
   public void configurePipeline(PipelineConfigurer pipelineConfigurer) {
-    config.validate();
-    pipelineConfigurer.getStageConfigurer()
-      .setOutputSchema(pipelineConfigurer.getStageConfigurer().getInputSchema());
+    StageConfigurer stageConfigurer = pipelineConfigurer.getStageConfigurer();
+    FailureCollector collector = stageConfigurer.getFailureCollector();
+
+    config.validate(collector);
+    collector.getOrThrowException();
+
+    stageConfigurer.setOutputSchema(stageConfigurer.getInputSchema());
+  }
+
+  @Override
+  public void prepareRun(BatchAggregatorContext context) {
+    FailureCollector collector = context.getFailureCollector();
+    config.validate(collector);
+    collector.getOrThrowException();
   }
 
   @Override
@@ -69,24 +76,24 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
   public void aggregate(String groupKey, Iterator<StructuredRecord> iterator,
                         Emitter<StructuredRecord> emitter) {
     int finalSampleSize = 0;
-    if (config.sampleSize != null) {
-      finalSampleSize = config.sampleSize;
+    if (config.getSampleSize() != null) {
+      finalSampleSize = config.getSampleSize();
     }
-    if (config.samplePercentage != null) {
-      finalSampleSize = Math.round((config.samplePercentage / 100) * config.totalRecords);
+    if (config.getSamplePercentage() != null) {
+      finalSampleSize = Math.round((config.getSamplePercentage() / 100) * config.getTotalRecords());
     }
 
-    switch (TYPE.valueOf(config.samplingType.toUpperCase())) {
+    switch (SamplingConfig.TYPE.valueOf(config.getSamplingType().toUpperCase())) {
       case SYSTEMATIC:
-        if (config.overSamplingPercentage != null) {
+        if (config.getOverSamplingPercentage() != null) {
           finalSampleSize = Math.round(finalSampleSize +
-                                         (finalSampleSize * (config.overSamplingPercentage / 100)));
+                                         (finalSampleSize * (config.getOverSamplingPercentage() / 100)));
         }
 
-        int sampleIndex = Math.round(config.totalRecords / finalSampleSize);
+        int sampleIndex = Math.round(config.getTotalRecords() / finalSampleSize);
         Float random;
-        if (config.random != null) {
-          random = config.random;
+        if (config.getRandom() != null) {
+          random = config.getRandom();
         } else {
           random = new Random().nextFloat();
         }
@@ -165,80 +172,5 @@ public class Sampling extends BatchAggregator<String, StructuredRecord, Structur
     fields.add(Schema.Field.of("random", Schema.of(Schema.Type.FLOAT)));
     fields.addAll(inputSchema.getFields());
     return Schema.recordOf("schema", fields);
-  }
-
-  /**
-   * Config for Sampling Plugin.
-   */
-  public static class SamplingConfig extends PluginConfig {
-
-    @Nullable
-    @Description("The number of records that needs to be sampled from the input records. Either of " +
-      "'samplePercentage' or 'sampleSize' should be specified for this plugin.")
-    @Macro
-    private Integer sampleSize;
-
-    @Nullable
-    @Description("The percenatage of records that needs to be sampled from the input records. Either of " +
-      "'samplePercentage' or 'sampleSize' should be specified for this plugin.")
-    @Macro
-    private Float samplePercentage;
-
-    @Description("Type of the Sampling algorithm that should to be used to sample the data. This can be either " +
-      "Systematic or Reservoir.")
-    private String samplingType;
-
-    @Nullable
-    @Description("The percentage of additional records that should be included in addition to the input " +
-      "sample size to account for oversampling. Required for Systematic Sampling.")
-    @Macro
-    private Float overSamplingPercentage;
-
-    @Nullable
-    @Description("Random float value between 0 and 1 to be used in Systematic Sampling. If not provided, " +
-      "plugin will internally generate random value.")
-    @Macro
-    private Float random;
-
-    @Nullable
-    @Description("Total number of input records for Systematic Sampling.")
-    @Macro
-    private Integer totalRecords;
-
-    public SamplingConfig() {
-      this.random = new Random().nextFloat();
-    }
-
-    public SamplingConfig(@Nullable Integer sampleSize, @Nullable Float samplePercentage,
-                          @Nullable Float overSamplingPercentage, @Nullable Float random,
-                          String samplingType, @Nullable Integer totalRecords) {
-      this.sampleSize = sampleSize;
-      this.samplePercentage = samplePercentage;
-      this.overSamplingPercentage = overSamplingPercentage;
-      this.random = random;
-      this.samplingType = samplingType;
-      this.totalRecords = totalRecords;
-    }
-
-    void validate() {
-      if (sampleSize == null && samplePercentage == null) {
-        throw new IllegalArgumentException("Please provide Sample size or Sample Percentage values.");
-      }
-
-      if (samplingType.equalsIgnoreCase(TYPE.SYSTEMATIC.toString()) && totalRecords == null) {
-        throw new IllegalArgumentException("Please provide value for 'Total Records' when selecting sampling " +
-                                             "type as 'Systematic'.");
-      }
-
-      if (samplePercentage != null && (samplePercentage < 1 || samplePercentage > 100)) {
-        throw new IllegalArgumentException("Value entered for 'Sample Percentage' is invalid. It should be " +
-                                             "in the range 1 to 100.");
-      }
-
-      if (random < 0 || random > 1) {
-        throw new IllegalArgumentException("Value entered for 'Random' is invalid. It should be in the range " +
-                                             "0 to 1.");
-      }
-    }
   }
 }
