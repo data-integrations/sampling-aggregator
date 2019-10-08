@@ -60,7 +60,7 @@ public class SamplingTest extends HydratorTestBase {
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration("explore.enabled", false);
 
-  private static final String PIPELINE_VERSION = "6.0.0-SNAPSHOT";
+  private static final String PIPELINE_VERSION = "6.1.0-SNAPSHOT";
   private static final ArtifactId BATCH_ARTIFACT_ID = NamespaceId.DEFAULT.artifact("data-pipeline", PIPELINE_VERSION);
   private static final ArtifactSummary BATCH_ARTIFACT = new ArtifactSummary("data-pipeline", PIPELINE_VERSION);
 
@@ -238,29 +238,5 @@ public class SamplingTest extends HydratorTestBase {
     List<StructuredRecord> outputRecords = MockSink.readOutput(outputManager);
     Assert.assertEquals(2, outputRecords.size());
     Assert.assertEquals(outputRecords.get(0).getSchema(), SOURCE_SCHEMA);
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testSamplingWithoutSampleSizeOrPercentage() {
-    Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, null, 10f, null, "Systematic", 10);
-    config.validate();
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testSystematicSamplingWithoutTotalRecords() {
-    Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, 10f, null, "Systematic", null);
-    config.validate();
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testIllegalRandom() {
-    Sampling.SamplingConfig config = new Sampling.SamplingConfig(10, null, 10f, 10f, "Systematic", 10);
-    config.validate();
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testIllegalSamplePercentage() {
-    Sampling.SamplingConfig config = new Sampling.SamplingConfig(null, 110f, 10f, null, "Systematic", 10);
-    config.validate();
   }
 }
